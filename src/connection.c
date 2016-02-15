@@ -48,6 +48,7 @@
 #include "address.h"
 #include "protocol.h"
 #include "logger.h"
+#include "backend.h"
 
 
 #define IS_TEMPORARY_SOCKERR(_errno) (_errno == EAGAIN || \
@@ -390,8 +391,52 @@ resolve_server_address(struct Connection *con, struct ev_loop *loop) {
     struct Address *server_address =
         listener_lookup_server_address(con->listener, con->hostname, con->hostname_len);
 
+    struct Backend *backend =
+        lookup_backend(&con->listener->table->backends, con->hostname, con->hostname_len);
+
     if (server_address == NULL) {
-        abort_connection(con);
+        if(backend) {
+            const char* name = con->hostname;
+            size_t name_len = con->hostname_len;
+
+            assert(backend->pattern_re != NULL);
+
+            const int OVECCOUNT = 30;
+            int ovector[OVECCOUNT];
+
+            int rc = pcre_exec(backend->pattern_re, NULL, name, name_len, 0, 0, ovector, OVECCOUNT);
+            if(rc == 3)
+            {
+                struct sockaddr_in* sockaddr = (struct sockaddr_in *)&con->server.addr;
+                sockaddr->sin_family = AF_INET;
+
+                for(int i = 1; i < rc; ++i)
+                {
+                    const char *substring_start = name + ovector[2*i];
+                    size_t substring_length = ovector[2*i+1] - ovector[2*i];
+
+                    char buffer[32];
+
+                    strncpy(buffer, substring_start, substring_length);
+                    buffer[substring_length] = '\0';
+
+                    if(i == 1)
+                    {
+                        inet_pton(AF_INET, buffer, &sockaddr->sin_addr);
+                    }
+                    else if(i == 2)
+                    {
+                        sockaddr->sin_port = htons(atoi(buffer));
+                    }
+                }
+
+                free(server_address);
+                con->state = RESOLVED;
+            }
+        } else {
+            abort_connection(con);
+        }
+
         return;
     } else if (address_is_hostname(server_address)) {
 #ifndef HAVE_LIBUDNS
