@@ -22,11 +22,12 @@ Features
 Usage
 -----
 
-    Usage: sniproxy [-c <config>] [-f] [-n <max file descriptor limit>] [-V]
-        -c  configuration file, defaults to /etc/sniproxy.conf
-        -f  run in foreground, do not drop privileges
-        -n  specify file descriptor limit
-        -V  print the version of SNIProxy and exit
+This application can be deployed as part of the Harbor OpenStack Platform.
+The release container is hosted @ https://hub.docker.com/r/port/sniproxy-base/
+No validation is performed on the ip-port ranges that this proxy attempts to connect to;
+it is therefore essential to place this behind a mechanism to limit the range of potential sni
+hostnames that reach the proxy. HAProxy is recommended for this, which can also serve to load
+ballance accross multiple instances; providing HA for the edge of your network.
 
 Configuration Syntax
 --------------------
