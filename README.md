@@ -52,9 +52,7 @@ Configuration Syntax
         # Match exact request hostnames
         example.com 192.0.2.10:4343
         example.net [2001:DB8::1:10]:443
-        # Or use regular expression to match
-        .*\\.com    [2001:DB8::1:11]:443
-        # Define a single entry like bellow, this is required for this fork.
+        # Define a single entry like below, this is required for this fork.
         # The starndard wildcard schema has been modified to forward to
         # internal servers (eg 10.0.0.1:9090) when clients hit an external 
         # hostname in the format 10.0.0.1-9090.example.com 
