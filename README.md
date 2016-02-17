@@ -1,15 +1,14 @@
-SNI Proxy
+Harbor SNI Proxy 
 =========
 
-Proxies incoming HTTP and TLS connections based on the hostname contained in
-the initial request of the TCP session. This enables HTTPS name-based virtual
-hosting to separate backend servers without installing the private key on the
-proxy machine.
+This version is modified from the upstream to enable a specific use case:
+Proxying tcp connections to guests in the Harbor OpenStack/Kubernetes Platform.
 
-News
-----
+It proxies incoming HTTP and TLS connections based on the hostname contained in
+the initial request of the TCP session to a specific ip:port.
+This enables HTTPS name-based virtual hosting to separate backend servers without
+installing the private key on the proxy machine, to be served from a single public ip.
 
-First [user survey](https://docs.google.com/forms/d/1K9Wpm6dZqBl9w4vhx_t2sWhRvOeNbJ8n0DBzYOo6ILo/viewform), please take a moment to offer your input.
 
 Features
 --------
@@ -29,80 +28,6 @@ Usage
         -n  specify file descriptor limit
         -V  print the version of SNIProxy and exit
 
-
-Installation
-------------
-
-For Debian or Fedora based Linux distributions see building packages below.
-
-**Prerequisites**
-
-+ Autotools (autoconf, automake, gettext and libtool)
-+ libev4, libpcre and libudns development headers
-+ Perl and cURL for test suite
-
-**Install**
-
-    ./autogen.sh && ./configure && make check && sudo make install
-
-**Building Debian/Ubuntu package**
-
-This is the preferred installation method on recent Debian based distributions:
-
-1. Install required packages
-
-        sudo apt-get install autotools-dev cdbs debhelper dh-autoreconf dpkg-dev gettext libev-dev libpcre3-dev libudns-dev pkg-config fakeroot
-
-2. Build a Debian package
-
-        ./autogen.sh && dpkg-buildpackage
-
-3. Install the resulting package
-
-        sudo dpkg -i ../sniproxy_<version>_<arch>.deb
-
-**Building Fedora/RedHat package**
-
-This is the preferred installation method for modern Fedora based distributions.
-
-1. Install required packages
-
-        sudo yum install autoconf automake curl gettext-devel libev-devel pcre-devel perl pkgconfig rpm-build udns-devel
-
-2. Build a distribution tarball:
-
-        ./autogen.sh && ./configure && make dist
-
-3. Build a RPM package
-
-        rpmbuild --define "_sourcedir `pwd`" -ba redhat/sniproxy.spec
-
-4. Install resulting RPM
-
-        sudo yum install ../sniproxy-<version>.<arch>.rpm
-
-I've used Scientific Linux 6 a fair amount, but I prefer Debian based
-distributions. RPM builds are tested in Travis-CI on Ubuntu, but not natively.
-This build process may not follow the current Fedora packaging standards, and
-may not even work.
-
-***Building on OS X with Homebrew***
-
-1. install dependencies.
-
-        brew install libev pcre udns autoconf automake gettext libtool
-
-2. Read the warning about gettext and force link it so autogen.sh works. We need the GNU gettext for the macro `AC_LIB_HAVE_LINKFLAGS` which isn't present in the default OS X package.
-
-        brew link --force gettext
-
-3. Make it so
-
-        ./autogen.sh && ./configure && make
-
-OS X support is a best effort, and isn't a primary target platform.
-
-
 Configuration Syntax
 --------------------
 
@@ -118,7 +43,6 @@ Configuration Syntax
     listener 127.0.0.1:443 {
         protocol tls
         table TableName
-
         # Specify a server to use if the initial client request doesn't contain
         # a hostname
         fallback 192.0.2.5:443
@@ -130,9 +54,11 @@ Configuration Syntax
         example.net [2001:DB8::1:10]:443
         # Or use regular expression to match
         .*\\.com    [2001:DB8::1:11]:443
-        # Combining regular expression and wildcard will resolve the hostname
-        # client requested and proxy to it
-        .*\\.edu    *:443
+        # Define a single entry like bellow, this is required for this fork.
+        # The starndard wildcard schema has been modified to forward to
+        # internal servers (eg 10.0.0.1:9090) when clients hit an external 
+        # hostname in the format 10.0.0.1-9090.example.com 
+        (.*)-(.*)\\.example\\.com
     }
 
 DNS Resolution
@@ -160,4 +86,3 @@ built from the Debian testing or Ubuntu source packages:
     dpkg-buildpackage
     cd ..
     sudo dpkg -i libudns-dev_0.4-1_amd64.deb libudns0_0.4-1_amd64.deb
-
